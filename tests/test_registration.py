@@ -1,40 +1,38 @@
 import allure
 import requests
 
-@allure.title("Успешное создание уникального пользователя")
-def test_create_user_successful(base_url, user_data):
-    response = requests.post(
-        f"{base_url}/api/auth/register",
-        json=user_data,
-    )
-    assert response.status_code == 200
-    response_data = response.json()
+from constants import BASE_URL
+from helpers import generate_user_data
 
-    assert response_data["success"] is True
-    assert response_data["user"]["email"] == user_data["email"]
+class TestRegistration:
 
-    access_token = response_data.get("accessToken")
-    if access_token:
-        requests.delete(
-        f"{base_url}/api/auth/user",
-        headers={"Authorization": access_token},
-    )
+    @allure.title("Успешная регистрация пользователя")
+    def test_create_user_successful(self, registered_user):
+        response = registered_user["response"]
+        response_data = registered_user["response_data"]
+        user_data = registered_user["data"]
+        assert response.status_code == 200
+        assert response_data["success"] is True
+        assert response_data["user"]["email"] == user_data["email"]
 
-@allure.title("Повторное создание уже зарегистрированного пользователя")
-def test_create_duplicate_user(base_url, registered_user):
-    response = requests.post(
-        f"{base_url}/api/auth/register",
-        json=registered_user["data"],
-    )
-    assert response.status_code == 403
-    assert response.json()["success"] is False
+    @allure.title("Регистрация уже существующего пользователя")
+    def test_create_duplicate_user(self, registered_user):
+        with allure.step("Повторно отправить запрос регистрации"):
+            response = requests.post(
+                f"{BASE_URL}/api/auth/register",
+                json=registered_user["data"],
+            )
+        assert response.status_code == 403
+        assert response.json()["success"] is False
 
-@allure.title("Создание пользователя без обязательного поля")
-def test_create_user_without_required_field(base_url, user_data):
-    user_data.pop("name")
-    response = requests.post(
-        f"{base_url}/api/auth/register",
-        json=user_data,
-    )
-    assert response.status_code == 403
-    assert response.json()["success"] is False
+    @allure.title("Регистрация без обязательного поля")
+    def test_create_user_without_required_field(self):
+        user_data = generate_user_data()
+        user_data.pop("name")
+        with allure.step("Отправить запрос без имени"):
+            response = requests.post(
+                f"{BASE_URL}/api/auth/register",
+                json=user_data,
+            )
+        assert response.status_code == 403
+        assert response.json()["success"] is False

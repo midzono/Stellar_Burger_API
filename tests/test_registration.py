@@ -7,13 +7,25 @@ from helpers import generate_user_data
 class TestRegistration:
 
     @allure.title("Успешная регистрация пользователя")
-    def test_create_user_successful(self, registered_user):
-        response = registered_user["response"]
-        response_data = registered_user["response_data"]
-        user_data = registered_user["data"]
+    def test_create_user_successful(self):
+        user_data = generate_user_data()
+        with allure.step("Зарегистрировать нового пользователя"):
+            response = requests.post(
+                f"{BASE_URL}/api/auth/register",
+                json=user_data,
+            )
+        response_data = response.json()
         assert response.status_code == 200
         assert response_data["success"] is True
         assert response_data["user"]["email"] == user_data["email"]
+
+        access_token = response_data.get("accessToken")
+        if access_token:
+            with allure.step("Удалить тестового пользователя"):
+                requests.delete(
+                    f"{BASE_URL}/api/auth/user",
+                    headers={"Authorization": access_token},
+                )
 
     @allure.title("Регистрация уже существующего пользователя")
     def test_create_duplicate_user(self, registered_user):
